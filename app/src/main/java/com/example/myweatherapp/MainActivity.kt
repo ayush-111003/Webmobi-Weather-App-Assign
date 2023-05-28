@@ -55,79 +55,90 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(binding?.root)
 
-        binding?.clickMe?.setOnClickListener {
-            var cSharedPreferences = getSharedPreferences("My Location", Context.MODE_PRIVATE)
+        try{
+            binding?.clickMe?.setOnClickListener {
+                var cSharedPreferences = getSharedPreferences("My Location", Context.MODE_PRIVATE)
 
-            if (Constants.isNetworkAvailable(this@MainActivity)) {
+                if (Constants.isNetworkAvailable(this@MainActivity)) {
 
-                val retrofit: Retrofit = Retrofit.Builder().baseUrl(BASE_URL)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build()
+                    val retrofit: Retrofit = Retrofit.Builder().baseUrl(BASE_URL)
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build()
 
-                val service: WeatherService =
-                    retrofit.create<WeatherService>(WeatherService::class.java)
+                    val service: WeatherService =
+                        retrofit.create<WeatherService>(WeatherService::class.java)
 
-                val listCall: Call<List<CityResponse>> = service.getCityCoordinates(
-                   binding?.cityName?.text.toString(), APP_ID
-                )
-                showProgressDialog()
+                    val listCall: Call<List<CityResponse>> = service.getCityCoordinates(
+                        binding?.cityName?.text.toString(), APP_ID
+                    )
+                    showProgressDialog()
 
-                // Callback methods are executed using the Retrofit callback executor.
-                listCall.enqueue(object : Callback<List<CityResponse>> {
-                    override fun onResponse(
-                        response: Response<List<CityResponse>>?,
-                        retrofit: Retrofit
-                    ) {
+                    // Callback methods are executed using the Retrofit callback executor.
+                    listCall.enqueue(object : Callback<List<CityResponse>> {
+                        override fun onResponse(
+                            response: Response<List<CityResponse>>?,
+                            retrofit: Retrofit
+                        ) {
 
-                        hideProgressDialog()
-                        // Check weather the response is success or not.
-                        if (response!!.isSuccess) {
+                            hideProgressDialog()
+                            // Check weather the response is success or not.
+                            if (response!!.isSuccess) {
 
-                            /** The de-serialized response body of a successful response. */
-                            val weatherList: List<CityResponse> = response.body()
-                            val weatherResponseJsonObject = Gson().toJson(weatherList)
-                            getLocationWeatherDetails(weatherList[0].lat, weatherList[0].lon)
+                                /** The de-serialized response body of a successful response. */
+                                val weatherList: List<CityResponse> = response.body()
+                                val weatherResponseJsonObject = Gson().toJson(weatherList)
+                                if(weatherList.isNotEmpty()){
+                                    getLocationWeatherDetails(weatherList[0].lat, weatherList[0].lon)
 
-                            val editor = cSharedPreferences.edit()
-                            editor.putString(Constants.WEATHER_RESPONSE_DATA, weatherResponseJsonObject)
-                            editor.apply()
-
-                        } else {
-                            Log.v("MainActivity", "Error")
-
-                            // If the response is not success then we check the response code.
-                            val sc = response.code()
-                            when (sc) {
-                                400 -> {
-                                    Log.e("Error 400", "Bad Request")
+                                    val editor = cSharedPreferences.edit()
+                                    editor.putString(Constants.WEATHER_RESPONSE_DATA, weatherResponseJsonObject)
+                                    editor.apply()
+                                }else{
+                                    Toast.makeText(this@MainActivity, "Enter only city name", Toast.LENGTH_SHORT).show()
                                 }
 
-                                404 -> {
-                                    Log.e("Error 404", "Not Found")
-                                }
 
-                                else -> {
-                                    Log.e("Error", "Generic Error")
+                            } else {
+                                Log.v("MainActivity", "Error")
+
+                                // If the response is not success then we check the response code.
+                                val sc = response.code()
+                                when (sc) {
+                                    400 -> {
+                                        Log.e("Error 400", "Bad Request")
+                                    }
+
+                                    404 -> {
+                                        Log.e("Error 404", "Not Found")
+                                    }
+
+                                    else -> {
+                                        Log.e("Error", "Generic Error")
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    override fun onFailure(t: Throwable) {
-                        hideProgressDialog()
+                        override fun onFailure(t: Throwable) {
+                            hideProgressDialog()
 
-                        Log.e("MainActivity", t.message.toString())
-                    }
-                })
+                            Log.e("MainActivity", t.message.toString())
+                        }
+                    })
 
-            } else {
-                Toast.makeText(
-                    this@MainActivity,
-                    "No internet connection available.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                } else {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "No internet connection available.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
+        }catch (e:Error){
+            Log.d("error","Hi")
+            e.printStackTrace()
         }
+
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         mSharedPreferences = getSharedPreferences(Constants.PREFERENCE_NAME, Context.MODE_PRIVATE)
